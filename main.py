@@ -1,79 +1,152 @@
 import time
-from models import Player, ProjectCard, StakeholderCard, ConcernCard, EventCard
+
+import configuration
 from decidarch_assistant import DecidArchAssistant
+from models import Player, ProjectCard, StakeholderCard, ConcernCard, EventCard
 
-assistant = DecidArchAssistant()
 
-# Setup del gioco
-players = [Player("John", "Doe"), Player("Jane", "Smith")]
-project_card = ProjectCard("New Project", "Develop a scalable web application")
+class DecidArchGame:
+    def __init__(self):
+        self.configuration = configuration.Configuration()
+        self.assistant = DecidArchAssistant(self.configuration)
+        self.players = []
+        self.project_card = None
+        self.stakeholder_cards = []
+        self.concern_cards = []
+        self.event_cards = []
+        self.decision_template = []
+        self.current_concern_index = 0
+        self.start_time = None
+        self.end_time = None
 
-owner_card = StakeholderCard("Owner", "Ensure project success", {"Availability": 3, "Security": 2, "Maintainability": 4})
-user_card = StakeholderCard("User", "Use the application effectively", {"Usability": 5, "Security": 3, "Performance": 4})
+    def setup_game(self):
+        # giocatori
+        num_players = int(input(f"Enter number of players (max {self.configuration.MAX_PLAYERS}): "))
+        if num_players > self.configuration.MAX_PLAYERS:
+            print(f"Number of players cannot exceed {self.configuration.MAX_PLAYERS}. Setting to {self.configuration.MAX_PLAYERS}.")
+            num_players = self.configuration.MAX_PLAYERS
+        elif num_players < self.configuration.MIN_PLAYERS:
+            print(f"Number of players cannot exceed {self.configuration.MIN_PLAYERS}.")
+            num_players = self.configuration.MIN_PLAYERS
 
-concern_cards = [
-    ConcernCard(1, "Scalability", {"Availability": -1, "Performance": 2}),
-    ConcernCard(2, "Security Breach", {"Security": -2, "Performance": -1}),
-    ConcernCard(3, "Usability Issue", {"Usability": 3}),
-    ConcernCard(4, "Maintenance Overhead", {"Maintainability": -1}),
-    ConcernCard(5, "Performance Optimization", {"Performance": 2, "Availability": 1}),
-    ConcernCard(6, "Cost Reduction", {"Cost": -2, "Maintainability": -1}),
-    ConcernCard(7, "Feature Expansion", {"Functionality": 3, "Usability": -1}),
-    ConcernCard(8, "Compliance Requirement", {"Security": 3, "Maintainability": -1}),
-    ConcernCard(9, "Technical Debt", {"Maintainability": -2, "Performance": -1}),
-]
+        for _ in range(num_players):
+            first_name = input("Enter player's first name: ")
+            last_name = input("Enter player's last name: ")
+            self.players.append(Player(first_name, last_name))
 
-event_cards = [
-    EventCard("System Outage", "Unexpected system outage", "Review security protocols"),
-    EventCard("New Legislation", "Compliance with new regulations required", "Reassess compliance and security measures"),
-    EventCard("Market Shift", "Change in market demands", "Adapt to new user needs and expectations"),
-    EventCard("Technology Update", "New technology available", "Consider integrating new technology"),
-    EventCard("Budget Cut", "Reduction in available budget", "Reevaluate project priorities and costs")
-]
+        # progetto
+        project_name = input("Enter project name: ")
+        project_purpose = input("Enter project purpose: ")
+        self.project_card = ProjectCard(project_name, project_purpose)
 
-def calculate_score(decision_template, stakeholders):
-    qa_scores = {attr: 0 for stakeholder in stakeholders for attr in stakeholder.quality_attributes.keys()}
-    for decision in decision_template:
-        for attr, impact in decision.items():
-            qa_scores[attr] += impact
+        # stakeholder
+        num_stakeholders = int(input(f"Enter number of stakeholders (max {self.configuration.MAX_STAKEHOLDERS}): "))
+        if num_stakeholders > self.configuration.MAX_STAKEHOLDERS:
+            print(f"Number of stakeholders cannot exceed {self.configuration.MAX_STAKEHOLDERS}. Setting to {self.configuration.MAX_STAKEHOLDERS}.")
+            num_stakeholders = self.configuration.MAX_STAKEHOLDERS
+        for _ in range(num_stakeholders):
+            role = input("Enter stakeholder role: ")
+            goal = input("Enter stakeholder goal: ")
+            num_attributes = int(input(f"Enter number of quality attributes for {role}: "))
+            quality_attributes = {}
+            for _ in range(num_attributes):
+                attr = input("Enter quality attribute: ")
+                priority = int(input(f"Enter priority for {attr} (1-5): "))
+                quality_attributes[attr] = priority
+            self.stakeholder_cards.append(StakeholderCard(role, goal, quality_attributes))
 
-    if any(score < 0 for score in qa_scores.values()):
-        return -1  # Immediate loss
+        # concern cards
+        num_concerns = int(input(f"Enter number of concern cards (max {self.configuration.MAX_CONCERNS}): "))
+        if num_concerns > self.configuration.MAX_CONCERNS:
+            print(f"Number of concern cards cannot exceed {self.configuration.MAX_CONCERNS}. Setting to {self.configuration.MAX_CONCERNS}.")
+            num_concerns = self.configuration.MAX_CONCERNS
+        for i in range(num_concerns):
+            concern = input(f"Enter concern for card {i+1}: ")
+            num_decisions = int(input(f"Enter number of design decisions for concern {concern}: "))
+            design_decisions = {}
+            for _ in range(num_decisions):
+                attr = input("Enter design decision attribute: ")
+                impact = int(input(f"Enter impact for {attr} (+/- value): "))
+                design_decisions[attr] = impact
+            self.concern_cards.append(ConcernCard(i+1, concern, design_decisions))
 
-    stakeholder_satisfaction = []
-    for stakeholder in stakeholders:
-        satisfaction = sum(max(0, qa_scores[attr] - priority) for attr, priority in stakeholder.quality_attributes.items())
-        stakeholder_satisfaction.append(satisfaction)
+        # event cards
+        num_events = int(input(f"Enter number of event cards (max {self.configuration.MAX_EVENTS}): "))
+        if num_events > self.configuration.MAX_EVENTS:
+            print(f"Number of event cards cannot exceed {self.configuration.MAX_EVENTS}. Setting to {self.configuration.MAX_EVENTS}.")
+            num_events = self.configuration.MAX_EVENTS
+        for _ in range(num_events):
+            title = input("Enter event title: ")
+            description = input("Enter event description: ")
+            consequence = input("Enter event consequence: ")
+            self.event_cards.append(EventCard(title, description, consequence))
 
-    final_score = sum(stakeholder_satisfaction)
-    return final_score
+    def calculate_score(self):
+        qa_scores = {attr: 0 for stakeholder in self.stakeholder_cards for attr in stakeholder.quality_attributes.keys()}
+        for decision in self.decision_template:
+            for attr, impact in decision.items():
+                qa_scores[attr] += impact
 
-# Simulazione del gioco
-start_time = time.time()
-end_time = start_time + 30 * 60  # 30 minuti
-decision_template = []
-current_concern_index = 0
+        if any(score < 0 for score in qa_scores.values()):
+            return -1  # Immediate loss
 
-while time.time() < end_time and current_concern_index < len(concern_cards):
-    for player in players:
-        if time.time() >= end_time:
-            break
+        stakeholder_satisfaction = []
+        for stakeholder in self.stakeholder_cards:
+            satisfaction = sum(max(0, qa_scores[attr] - priority) for attr, priority in stakeholder.quality_attributes.items())
+            stakeholder_satisfaction.append(satisfaction)
 
-        concern_card = concern_cards[current_concern_index]
-        print(f"{player.first_name} {player.last_name}'s turn:")
-        print(f"Concern: {concern_card.concern}")
+        final_score = sum(stakeholder_satisfaction)
+        return final_score
 
-        comment = f"How should we address the following concern: {concern_card.concern}?"
-        suggestion = assistant.provide_suggestions(comment)
-        print(f"Suggestion: {suggestion}")
+    def play_game(self):
+        self.setup_game()
+        self.start_time = time.time()
+        self.end_time = self.start_time + 30 * 60  # 30 minuti
 
-        # Simulazione della decisione presa e registrazione
-        decision_template.append(concern_card.design_decisions)
-        current_concern_index += 1
+        while time.time() < self.end_time and self.current_concern_index < len(self.concern_cards):
+            for player in self.players:
+                if time.time() >= self.end_time:
+                    break
 
-        if current_concern_index >= len(concern_cards):
-            break
+                concern_card = self.concern_cards[self.current_concern_index]
+                print(f"{player.first_name} {player.last_name}'s turn:")
+                print(f"Concern: {concern_card.concern}")
 
-# Calcolo del punteggio finale
-final_score = calculate_score(decision_template, [owner_card, user_card])
-print(f"Final Score: {final_score}")
+                # stakeholders_info = "\n".join([f"- {stakeholder.role}: {stakeholder.quality_attributes}" for stakeholder in self.stakeholder_cards])
+                current_design_decisions = ", ".join([f"{k}: {v}" for decision in self.decision_template for k, v in decision.items()])
+                current_qa_scores = ", ".join([f"{k}: {v}" for k, v in self.calculate_qa_scores().items()])
+                ongoing_events = ", ".join([f"{event.title}: {event.description}" for event in self.event_cards])
+
+                suggestion = self.assistant.extract_info_trip(
+                    project_description=f"{self.project_card.name} - {self.project_card.purpose}",
+                    stakeholders=self.stakeholder_cards,
+                    current_design_decisions=current_design_decisions,
+                    current_qa_scores=current_qa_scores,
+                    ongoing_events=ongoing_events,
+                    concern_card_description=concern_card.concern,
+                    design_options=concern_card.design_decisions
+                )
+                print(f"Suggestion: {suggestion}")
+
+                # Simulazione della decisione presa e registrazione
+                self.decision_template.append(concern_card.design_decisions)
+                self.current_concern_index += 1
+
+                if self.current_concern_index >= len(self.concern_cards):
+                    break
+
+        # punteggio finale
+        final_score = self.calculate_score()
+        print(f"Final Score: {final_score}")
+
+    def calculate_qa_scores(self):
+        qa_scores = {attr: 0 for stakeholder in self.stakeholder_cards for attr in stakeholder.quality_attributes.keys()}
+        for decision in self.decision_template:
+            for attr, impact in decision.items():
+                qa_scores[attr] += impact
+        return qa_scores
+
+
+if __name__ == "__main__":
+    game = DecidArchGame()
+    game.play_game()

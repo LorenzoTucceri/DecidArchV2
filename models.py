@@ -25,11 +25,3 @@ class EventCard:
         self.title = title
         self.description = description
         self.consequence = consequence
-
-# Example usage
-player1 = Player("John", "Doe")
-project_card = ProjectCard("New Project", "Develop a scalable web application")
-owner_card = StakeholderCard("Owner", "Ensure project success", {"Availability": 3, "Security": 2, "Maintainability": 4})
-user_card = StakeholderCard("User", "Use the application effectively", {"Usability": 5, "Security": 3, "Performance": 4})
-concern_card = ConcernCard(1, "Scalability", {"Availability": -1, "Performance": 2})
-event_card = EventCard("System Outage", "Unexpected system outage", "Review security protocols")
