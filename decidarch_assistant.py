@@ -1,10 +1,33 @@
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain.chains import chains
+from langchain import chains
 from langchain.llms import Ollama
 
 
 class DecidArchAssistant:
+    """
+    Virtual assistant specialized in assisting with architectural design decisions based on stakeholder concerns, project state, and ongoing events.
+
+    Attributes:
+        configuration (object): Configuration object containing settings such as URI and model name for the LLM.
+        system_template (str, optional): Custom system message template for the assistant. Defaults to a predefined template.
+        llm (Ollama): Language model instance used to generate suggestions based on provided data.
+
+    Methods:
+        __init__(configuration, system_template=None): Initializes the assistant with configuration and an optional system template.
+        create_chain(template): Creates and returns a language model chain based on a provided template.
+        extract_suggestion(): Generates a chain with a predefined template for suggesting the best design decision.
+        extract_suggestion_chain(project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events, concern_card_description, design_options):
+            Generates a suggestion for the best design decision based on various inputs.
+    """
+
     def __init__(self, configuration, system_template=None):
+        """
+        Initializes the DecidArchAssistant object with the provided configuration and an optional system template.
+
+        Args:
+            configuration (object): Configuration containing settings for the assistant, including URI and model name for the LLM.
+            system_template (str, optional): Custom template for the system message. Defaults to a predefined message that describes the assistant's role.
+        """
         self.template = system_template or (
             "You operate as {self.assistant_name}, a virtual assistant specialized in assisting with design decisions "
             "based on concerns provided by stakeholders."
@@ -12,14 +35,23 @@ class DecidArchAssistant:
 
         self.configuration = configuration
 
-        # fare try catch
+        # initializing an llm using the Ollama API with the provided configuration.
         self.llm = Ollama(
-            base_url=configuration.uri_ollama,
-            model=configuration.model_name,
+            base_url=self.configuration.uri_ollama,
+            model=self.configuration.model_name,
             system=self.template,
         )
 
     def create_chain(self, template):
+        """
+        Creates a language model chain using the provided template and the initialized LLM.
+
+        Args:
+            template (str): The prompt template to be used for generating responses.
+
+        Returns:
+            chains.LLMChain: A chain object that links the prompt template with the language model.
+        """
         prompt_template = ChatPromptTemplate(
             messages=[
                 HumanMessagePromptTemplate.from_template(template)
@@ -34,6 +66,14 @@ class DecidArchAssistant:
         return chain
 
     def extract_suggestion(self):
+        """
+        Creates a chain with a predefined prompt for suggesting the best design option based on stakeholder concerns, project state, and ongoing events.
+
+        The template used provides information about the project description, stakeholders' quality attribute priorities, current game state, concern card, and possible design options.
+
+        Returns:
+            chains.LLMChain: A chain object that will be used to generate the design suggestion.
+        """
         template = """
         You are an AI assistant helping a team of software architects playing the game DecidArch. Your task is to suggest
         the best design option for a given concern card, taking into account the stakeholders' quality attribute priorities
@@ -62,9 +102,24 @@ class DecidArchAssistant:
 
         return self.create_chain(template)
 
-    def extract_info_trip(self, project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events, concern_card_description, design_options):
+    def extract_suggestion_chain(self, project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events, concern_card_description, design_options):
+        """
+        Generates a design suggestion based on project description, stakeholder information, design decisions, QA scores, ongoing events, and concern card.
+
+        Args:
+            project_description (str): A description of the project.
+            stakeholders (list): A list of stakeholders, where each stakeholder contains a role and quality attributes.
+            current_design_decisions (str): A description of the current design decisions in place.
+            current_qa_scores (str): The current quality attribute scores.
+            ongoing_events (str): A list of ongoing events in the project.
+            concern_card_description (str): The description of the concern card.
+            design_options (str): A list of possible design options to choose from.
+
+        Returns:
+            str: The assistant's suggestion for the best design option, including a rationale.
+        """
         stakeholders_info = "\n".join([f"- {stakeholder.role}: {stakeholder.quality_attributes}" for stakeholder in stakeholders])
-        info = self.extract_suggestion().run(
+        suggestion = self.extract_suggestion().run(
             project_description=project_description,
             stakeholders_info=stakeholders_info,
             current_design_decisions=current_design_decisions,
@@ -73,4 +128,4 @@ class DecidArchAssistant:
             concern_card_description=concern_card_description,
             design_options=design_options
         )
-        return info
+        return suggestion
