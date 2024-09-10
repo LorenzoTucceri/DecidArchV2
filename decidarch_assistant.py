@@ -18,6 +18,7 @@ class DecidArchAssistant:
         extract_suggestion(): Generates a chain with a predefined template for suggesting the best design decision.
         extract_suggestion_chain(project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events, concern_card_description, design_options):
             Generates a suggestion for the best design decision based on various inputs.
+        extract_review_suggestion(): Generates a suggestion to review past design decisions based on a new event.
     """
 
     def __init__(self, configuration, system_template=None):
@@ -67,12 +68,7 @@ class DecidArchAssistant:
 
     def extract_suggestion(self):
         """
-        Creates a chain with a predefined prompt for suggesting the best design option based on stakeholder concerns, project state, and ongoing events.
-
-        The template used provides information about the project description, stakeholders' quality attribute priorities, current game state, concern card, and possible design options.
-
-        Returns:
-            chains.LLMChain: A chain object that will be used to generate the design suggestion.
+        Metodo per gestire la scelta della migliore opzione di design in base alla concern card pescata.
         """
         template = """
         You are an AI assistant helping a team of software architects playing the game DecidArch. Your task is to suggest
@@ -99,7 +95,6 @@ class DecidArchAssistant:
         Based on this information, suggest the best design option that satisfies the stakeholders' priorities and 
         considers any ongoing events. Provide a rationale for your suggestion.
         """
-
         return self.create_chain(template)
 
     def extract_suggestion_chain(self, project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events, concern_card_description, design_options):
@@ -127,5 +122,57 @@ class DecidArchAssistant:
             ongoing_events=ongoing_events,
             concern_card_description=concern_card_description,
             design_options=design_options
+        )
+        return suggestion
+
+    def extract_review_suggestion(self):
+        """
+        Metodo per gestire la revisione delle decisioni passate a seguito di un evento imprevisto.
+        """
+        template = """
+        You are an AI assistant helping a team of software architects playing the game DecidArch. An unexpected event has occurred,
+        and it might require changes to the previous design decisions. Your task is to suggest which past design decision(s) should
+        be revised based on the new event. Here's the information you'll need:
+
+        Project Description:
+        - {project_description}
+
+        Stakeholders and their Quality Attribute Priorities:
+        {stakeholders_info}
+
+        Current Game State:
+        - Current Design Decisions: {current_design_decisions}
+        - Current QA-Scores: {current_qa_scores}
+
+        Ongoing Events:
+        {ongoing_events}
+
+        Based on this event, review the previous decisions and suggest necessary revisions. Provide a rationale for your suggestion.
+        """
+        return self.create_chain(template)
+
+    def extract_review_suggestion_chain(self, project_description, stakeholders, current_design_decisions, current_qa_scores, ongoing_events):
+        """
+        Generates a design suggestion based on project description, stakeholder information, design decisions, QA scores, ongoing events, and event card.
+
+        Args:
+            project_description (str): A description of the project.
+            stakeholders (list): A list of stakeholders, where each stakeholder contains a role and quality attributes.
+            current_design_decisions (str): A description of the current design decisions in place.
+            current_qa_scores (str): The current quality attribute scores.
+            ongoing_events (str): A list of ongoing events in the project.
+            event_card_description (str): The description of the new event card that has been drawn.
+
+        Returns:
+            str: The assistant's suggestion for revising past design decisions, including a rationale.
+        """
+        stakeholders_info = "\n".join(
+            [f"- {stakeholder.role}: {stakeholder.quality_attributes}" for stakeholder in stakeholders])
+        suggestion = self.extract_review_suggestion().run(
+            project_description=project_description,
+            stakeholders_info=stakeholders_info,
+            current_design_decisions=current_design_decisions,
+            current_qa_scores=current_qa_scores,
+            ongoing_events=ongoing_events
         )
         return suggestion
