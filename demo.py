@@ -2,56 +2,61 @@ from models import Player, ProjectCard, StakeholderCard, ConcernCard, EventCard
 from decidarch_assistant import DecidArchAssistant
 import configuration
 
-def demo_end_turn():
+def initialize_game():
+    """
+    Funzione di inizializzazione del gioco: configurazione dell'assistente, dei giocatori, del progetto e degli stakeholder.
+    """
     config = configuration.Configuration()
     assistant = DecidArchAssistant(config)
 
-    # players
+    # Giocatori
     players = [Player("John", "Doe"), Player("Rick", "Harrington")]
-    print("Actual players", [print(player.first_name, player.last_name) for player in players])
+    print("Giocatori attivi:", [f"{player.first_name} {player.last_name}" for player in players])
 
-    # project's info
+    # Progetto
     project_card = ProjectCard("New Web App", "Develop a scalable web application for e-commerce")
 
-    # stakeholders w priority
+    # Stakeholders
     stakeholder_cards = [
         StakeholderCard("Owner", "Ensure project success", {"Availability": 3, "Security": 2, "Cost": 1}),
         StakeholderCard("User", "Use the app effectively", {"Usability": 4, "Performance": 3, "Security": 1})
     ]
 
-    # concern cards
-    concern_cards = [
-        ConcernCard(1, "Security Breach", {"Security": -2, "Performance": -1}),
-        ConcernCard(2, "Scalability Issue", {"Availability": -1, "Performance": 2}),
-        ConcernCard(3, "Cost Reduction", {"Cost": -2, "Maintainability": -1}),
-    ]
+    return assistant, project_card, stakeholder_cards
 
-    # actual decision and QA scores
+def demo_1_security_breach_and_server_outage():
+    """
+    Demo 1: Affrontare sia una concern card (Security Breach) che un evento (Server Outage).
+    """
+    # Inizializzazione
+    assistant, project_card, stakeholder_cards = initialize_game()
+
+    # Decisioni attuali e punteggi QA
     decision_template = [
-        {"Security": -1, "Availability": 2},  # Decisione di mitigare la sicurezza ma migliorare la disponibilità
+        {"Security": -1, "Availability": 2},  # Migliora disponibilità a scapito della sicurezza
         {"Performance": 3, "Usability": -1}   # Aumento delle performance a scapito dell'usabilità
     ]
 
-    # actual QA scores
     qa_scores = {
-        "Security": 1,  # min security negative impact
-        "Performance": 2,  # performance increment thanks to last decisions
-        "Usability": 3,  # negative impact on usability
-        "Availability": 3,  # higher disponibility thanks to last decisions
-        "Cost": 0,  # no cost impact
-        "Maintainability": 0  # neutral maintainability
+        "Security": 1,
+        "Performance": 2,
+        "Usability": 3,
+        "Availability": 3,
+        "Cost": 0,
+        "Maintainability": 0
     }
 
-    # ongoing events with description
-    ongoing_events = [
-        EventCard("Budget Cut", "Reduction in available budget", "Resources are limited. Prioritize cost-saving measures."),
-        EventCard("New Privacy Regulation", "New data privacy regulations require higher security measures", "Ensure compliance with strict privacy laws.")
-    ]
+    # Concern Card: Security Breach
+    concern_card = ConcernCard(1, "Security Breach", {"Security": -2, "Performance": -1})
 
-    # current concern
-    current_concern = concern_cards[0]  # Affrontiamo la preoccupazione "Security Breach"
+    # Evento: Server Outage
+    event_card = EventCard(
+        title="Server Outage Incident",
+        description="A critical server outage has occurred, causing system downtime.",
+        consequence="The project must ensure high availability and implement server redundancy."
+    )
 
-    # demo of complex design options to discuss
+    # Opzioni di design disponibili
     design_options = {
         "Implement Advanced Encryption": {"Security": +2, "Performance": -1, "Cost": -2},
         "Reduce Security Testing to Meet Deadlines": {"Security": -2, "Cost": +2, "Performance": +1},
@@ -59,20 +64,74 @@ def demo_end_turn():
         "Use Open-Source Security Tools": {"Security": +1, "Cost": +1, "Maintainability": -1}
     }
 
-    # formatting for prompt
-    ongoing_events_desc = "\n".join([f"{event.title}: {event.description}. {event.consequence}" for event in ongoing_events])
-
-    # suggestion given by assistant
+    # Suggerimento AI per la concern card e l'evento
     suggestion = assistant.extract_suggestion_chain(
         project_description=f"{project_card.name} - {project_card.purpose}",
         stakeholders=stakeholder_cards,
         current_design_decisions=decision_template,
         current_qa_scores=qa_scores,
-        ongoing_events=ongoing_events_desc,  # ongoing event
-        concern_card_description=current_concern.concern,
-        design_options=design_options  # possible design decision
+        ongoing_events=f"{event_card.title}: {event_card.description}. {event_card.consequence}",
+        concern_card_description=concern_card.concern,
+        design_options=design_options
     )
 
-    print(f"AI Suggestion: {suggestion}")
+    # Output del suggerimento
+    print(f"AI Suggestion for Security Breach and Server Outage: {suggestion}")
 
-demo_end_turn()
+def demo_2_performance_degradation_and_cost_overrun():
+    """
+    Demo 2: Affrontare sia una concern card (Performance Degradation) che un evento (Cost Overrun).
+    """
+    # Inizializzazione
+    assistant, project_card, stakeholder_cards = initialize_game()
+
+    # Decisioni attuali e punteggi QA
+    decision_template = [
+        {"Security": -1, "Availability": 2},  # Migliora disponibilità a scapito della sicurezza
+        {"Performance": 3, "Usability": -1}   # Aumento delle performance a scapito dell'usabilità
+    ]
+
+    qa_scores = {
+        "Security": 1,
+        "Performance": 2,
+        "Usability": 3,
+        "Availability": 3,
+        "Cost": 0,
+        "Maintainability": 0
+    }
+
+    # Concern Card: Performance Degradation
+    concern_card = ConcernCard(2, "Performance Degradation", {"Performance": -3, "Usability": -1})
+
+    # Evento: Cost Overrun
+    event_card = EventCard(
+        title="Cost Overrun",
+        description="The project has exceeded the allocated budget due to unexpected infrastructure costs.",
+        consequence="Need to revise design choices to reduce costs while maintaining project goals."
+    )
+
+    # Opzioni di design disponibili
+    design_options = {
+        "Optimize Database Queries": {"Performance": +3, "Cost": -2, "Usability": 0},
+        "Reduce Testing to Save Costs": {"Security": -1, "Cost": +3, "Maintainability": -2},
+        "Implement Cloud Auto-scaling": {"Performance": +2, "Availability": +2, "Cost": -3},
+        "Use Open-Source Tools": {"Cost": +2, "Maintainability": -1, "Performance": +1}
+    }
+
+    # Suggerimento AI per la concern card e l'evento
+    suggestion = assistant.extract_suggestion_chain(
+        project_description=f"{project_card.name} - {project_card.purpose}",
+        stakeholders=stakeholder_cards,
+        current_design_decisions=decision_template,
+        current_qa_scores=qa_scores,
+        ongoing_events=f"{event_card.title}: {event_card.description}. {event_card.consequence}",
+        concern_card_description=concern_card.concern
+    )
+
+    # Output del suggerimento
+    print(f"AI Suggestion for Performance Degradation and Cost Overrun: {suggestion}")
+
+# Esegui la demo 1
+demo_1_security_breach_and_server_outage()
+# Esegui la demo 2
+demo_2_performance_degradation_and_cost_overrun()
